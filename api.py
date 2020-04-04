@@ -1,53 +1,72 @@
-# coding: utf-8
-# Импортирует поддержку UTF-8.
-from __future__ import unicode_literals
-
-# Импортируем модули для работы с JSON и логами.
-import json
-import logging
-
-# Импортируем подмодули Flask для запуска веб-сервиса.
+# импортируем библиотеки
 from flask import Flask, request
+import logging
+import os
+
+# библиотека, которая нам понадобится для работы с JSON
+import json
+
+# создаём приложение
+# мы передаём __name__, в нем содержится информация,
+# в каком модуле мы находимся.
+# В данном случае там содержится '__main__',
+# так как мы обращаемся к переменной из запущенного модуля.
+# если бы такое обращение, например,
+# произошло внутри модуля logging, то мы бы получили 'logging'
 app = Flask(__name__)
 
+# Устанавливаем уровень логирования
+logging.basicConfig(level=logging.INFO)
 
-logging.basicConfig(level=logging.DEBUG)
-
-# Хранилище данных о сессиях.
+# Создадим словарь, чтобы для каждой сессии общения
+# с навыком хранились подсказки, которые видел пользователь.
+# Это поможет нам немного разнообразить подсказки ответов
+# (buttons в JSON ответа).
+# Когда новый пользователь напишет нашему навыку,
+# то мы сохраним в этот словарь запись формата
+# sessionStorage[user_id] = {'suggests': ["Не хочу.", "Не буду.", "Отстань!" ]}
+# Такая запись говорит, что мы показали пользователю эти три подсказки.
+# Когда он откажется купить слона,
+# то мы уберем одну подсказку. Как будто что-то меняется :)
 sessionStorage = {}
 
-# Задаем параметры приложения Flask.
-@app.route("/", methods=['POST'])
 
-def main():
+@app.route('/post', methods=['POST'])
 # Функция получает тело запроса и возвращает ответ.
-    logging.info('Request: %r', request.json)
+# Внутри функции доступен request.json - это JSON,
+# который отправила нам Алиса в запросе POST
+def main():
+    logging.info(f'Request: {request.json!r}')
 
+    # Начинаем формировать ответ, согласно документации
+    # мы собираем словарь, который потом при помощи
+    # библиотеки json преобразуем в JSON и отдадим Алисе
     response = {
-        "version": request.json['version'],
-        "session": request.json['session'],
-        "response": {
-            "end_session": False
+        'session': request.json['session'],
+        'version': request.json['version'],
+        'response': {
+            'end_session': False
         }
     }
 
+    # Отправляем request.json и response в функцию handle_dialog.
+    # Она сформирует оставшиеся поля JSON, которые отвечают
+    # непосредственно за ведение диалога
     handle_dialog(request.json, response)
 
-    logging.info('Response: %r', response)
+    logging.info(f'Response:  {response!r}')
 
-    return json.dumps(
-        response,
-        ensure_ascii=False,
-        indent=2
-    )
+    # Преобразовываем в JSON и возвращаем
+    return json.dumps(response)
 
-# Функция для непосредственной обработки диалога.
+
 def handle_dialog(req, res):
     user_id = req['session']['user_id']
 
     if req['session']['new']:
         # Это новый пользователь.
         # Инициализируем сессию и поприветствуем его.
+        # Запишем подсказки, которые мы ему покажем в первый раз
 
         sessionStorage[user_id] = {
             'suggests': [
@@ -56,27 +75,36 @@ def handle_dialog(req, res):
                 "Отстань!",
             ]
         }
-
+        # Заполняем текст ответа
         res['response']['text'] = 'Привет! Купи слона!'
+        # Получим подсказки
         res['response']['buttons'] = get_suggests(user_id)
         return
 
+    # Сюда дойдем только, если пользователь не новый,
+    # и разговор с Алисой уже был начат
     # Обрабатываем ответ пользователя.
+    # В req['request']['original_utterance'] лежит весь текст,
+    # что нам прислал пользователь
+    # Если он написал 'ладно', 'куплю', 'покупаю', 'хорошо',
+    # то мы считаем, что пользователь согласился.
+    # Подумайте, всё ли в этом фрагменте написано "красиво"?
     if req['request']['original_utterance'].lower() in [
         'ладно',
         'куплю',
         'покупаю',
-        'хорошо',
+        'хорошо'
     ]:
         # Пользователь согласился, прощаемся.
         res['response']['text'] = 'Слона можно найти на Яндекс.Маркете!'
+        res['response']['end_session'] = True
         return
 
     # Если нет, то убеждаем его купить слона!
-    res['response']['text'] = 'Все говорят "%s", а ты купи слона!' % (
-        req['request']['original_utterance']
-    )
+    res['response']['text'] = \
+        f"Все говорят '{req['request']['original_utterance']}', а ты купи слона!"
     res['response']['buttons'] = get_suggests(user_id)
+
 
 # Функция возвращает две подсказки для ответа.
 def get_suggests(user_id):
@@ -102,3 +130,8 @@ def get_suggests(user_id):
         })
 
     return suggests
+
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='localhost', port=port)
