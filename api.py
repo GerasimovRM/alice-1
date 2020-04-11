@@ -34,6 +34,7 @@ def main():
 
 
 def handle_dialog(res, req):
+    sessionStorage = SessionStorage().get_session()
     user_id = req['session']['user_id']
     if req['session']['new']:
         res['response']['text'] = 'Привет! Назови своё имя!'
@@ -104,6 +105,7 @@ def handle_dialog(res, req):
 
 
 def play_game(res, req):
+    sessionStorage = SessionStorage().get_session()
     user_id = req['session']['user_id']
     attempt = sessionStorage[user_id]['attempt']
     if attempt == 1:
@@ -173,6 +175,5 @@ def get_first_name(req):
 
 
 if __name__ == '__main__':
-    sessionStorage = SessionStorage().get_session()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='localhost', port=port)
