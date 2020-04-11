@@ -4,8 +4,6 @@ import json
 import random
 import os
 
-from extensions import SessionStorage
-
 
 
 app = Flask(__name__)
@@ -17,6 +15,9 @@ cities = {
     'нью-йорк': ['1540737/3c9c6825c8171c3bf13d', '1652229/08d1f421db70eaa69648'],
     'париж': ["1652229/4c54156d2ce4b31dccca", '965417/32da59f3a0dc4f389d82']
 }
+
+sessionStorage = {}
+
 
 @app.route('/post', methods=['POST'])
 def main():
@@ -34,9 +35,8 @@ def main():
 
 
 def handle_dialog(res, req):
-    sessionStorage = SessionStorage().get_session()
     user_id = req['session']['user_id']
-    if req['session']['new']:
+    if req['session']['new'] or not sessionStorage.get(user_id):
         res['response']['text'] = 'Привет! Назови своё имя!'
         sessionStorage[user_id] = {
             'first_name': None,  # здесь будет храниться имя
@@ -105,7 +105,6 @@ def handle_dialog(res, req):
 
 
 def play_game(res, req):
-    sessionStorage = SessionStorage().get_session()
     user_id = req['session']['user_id']
     attempt = sessionStorage[user_id]['attempt']
     if attempt == 1:
@@ -175,5 +174,6 @@ def get_first_name(req):
 
 
 if __name__ == '__main__':
+    sessionStorage =
     port = int(os.environ.get("PORT", 5000))
     app.run(host='localhost', port=port)
