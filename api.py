@@ -4,6 +4,10 @@ import json
 import random
 import os
 
+from extensions import SessionStorage
+
+
+
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO)
@@ -13,9 +17,6 @@ cities = {
     'нью-йорк': ['1540737/3c9c6825c8171c3bf13d', '1652229/08d1f421db70eaa69648'],
     'париж': ["1652229/4c54156d2ce4b31dccca", '965417/32da59f3a0dc4f389d82']
 }
-
-sessionStorage = {}
-
 
 @app.route('/post', methods=['POST'])
 def main():
@@ -172,5 +173,6 @@ def get_first_name(req):
 
 
 if __name__ == '__main__':
+    sessionStorage = SessionStorage().get_session()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='localhost', port=port)
